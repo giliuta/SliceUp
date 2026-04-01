@@ -20,14 +20,6 @@ export const metadata: Metadata = {
   title: "SliceUp — Premium Dried Fruits",
   description:
     "Premium dehydrated fruits and vegetables from Cyprus. No sugar added, no preservatives. Pure nature, sliced to perfection.",
-  keywords: [
-    "dried fruits",
-    "dehydrated",
-    "premium snacks",
-    "Cyprus",
-    "healthy snacks",
-    "SliceUp",
-  ],
   openGraph: {
     title: "SliceUp — Premium Dried Fruits",
     description:

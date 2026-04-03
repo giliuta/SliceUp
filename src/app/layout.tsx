@@ -48,9 +48,12 @@ export const metadata: Metadata = {
   },
 };
 
+import JsonLd from "@/components/JsonLd";
+
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={`${playfair.variable} ${dmSans.variable}`}>
+      <head><JsonLd /></head>
       <body>{children}</body>
     </html>
   );

@@ -6,7 +6,7 @@ import { useGSAP } from "@gsap/react";
 import type { Product } from "@/data/products";
 import { formatPrice } from "@/data/products";
 import BackgroundText from "./BackgroundText";
-import ProductVideo from "./ProductVideo";
+import ProductImage from "./ProductImage";
 import FloatingParticles from "./FloatingParticles";
 import ProductSwitcher from "./ProductSwitcher";
 import { useParallax } from "@/hooks/useParallax";
@@ -28,7 +28,6 @@ export default function HeroSection({
   onProductChange,
 }: HeroSectionProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const contentRef = useRef<HTMLDivElement>(null);
   const hasAnimated = useRef(false);
   const parallax = useParallax(1);
   const addItem = useCartStore((s) => s.addItem);
@@ -42,7 +41,7 @@ export default function HeroSection({
     document.documentElement.style.setProperty("--theme-accent", product.theme.accent);
   }, [product.theme]);
 
-  // Initial load animation (once)
+  // Initial staggered load animation
   useGSAP(
     () => {
       if (hasAnimated.current) return;
@@ -50,30 +49,13 @@ export default function HeroSection({
 
       const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
 
-      tl.from(".hero-bg-text", { opacity: 0, scale: 0.96, duration: 0.9, delay: 0.4 })
-        .from(".hero-product", { opacity: 0, scale: 0.92, duration: 0.8 }, "-=0.4")
-        .from(".hero-subtitle", { opacity: 0, y: 25, duration: 0.5 }, "-=0.3")
-        .from(".hero-title", { opacity: 0, y: 25, duration: 0.5 }, "-=0.25")
-        .from(".hero-desc", { opacity: 0, y: 25, duration: 0.5 }, "-=0.25")
-        .from(".hero-cta", { opacity: 0, y: 25, duration: 0.5 }, "-=0.25")
-        .from(".hero-price-block", { opacity: 0, y: 20, duration: 0.4 }, "-=0.3")
-        .from(".hero-thumbs", { opacity: 0, y: 15, duration: 0.5 }, "-=0.2")
-        .from(".hero-scroll", { opacity: 0, duration: 0.4 }, "-=0.1");
+      tl.from(".hero-bg-text", { opacity: 0, scale: 0.95, duration: 1, delay: 0.3 })
+        .from(".hero-product", { opacity: 0, scale: 0.85, y: 40, duration: 0.9 }, "-=0.5")
+        .from(".hero-info", { opacity: 0, y: 30, duration: 0.6 }, "-=0.4")
+        .from(".hero-price-block", { opacity: 0, y: 20, duration: 0.5 }, "-=0.3")
+        .from(".hero-thumbs", { opacity: 0, y: 20, duration: 0.5 }, "-=0.2");
     },
     { scope: containerRef }
-  );
-
-  // Animate content on product switch
-  useGSAP(
-    () => {
-      if (!hasAnimated.current) return;
-      gsap.from(contentRef.current, {
-        opacity: 0,
-        duration: 0.35,
-        ease: "power2.out",
-      });
-    },
-    { scope: containerRef, dependencies: [activeIndex], revertOnUpdate: true }
   );
 
   // Keyboard nav
@@ -101,181 +83,166 @@ export default function HeroSection({
       ref={containerRef}
       className="relative h-screen w-full overflow-hidden"
     >
-      {/* ====== DEPTH LAYERS ====== */}
-
-      {/* Background text — behind everything */}
+      {/* Layer 1: Background text — BEHIND product */}
       <BackgroundText text={product.name} parallax={parallax} />
 
-      {/* Ambient glow blobs */}
+      {/* Layer 2: Ambient glow blobs */}
       <div
-        className="pointer-events-none absolute z-[1] rounded-full"
+        className="pointer-events-none absolute z-[2] rounded-full"
+        style={{
+          width: 600,
+          height: 600,
+          top: "5%",
+          left: "-10%",
+          background: product.theme.accent,
+          filter: "blur(140px)",
+          opacity: 0.12,
+          transition: "background 0.6s ease",
+        }}
+      />
+      <div
+        className="pointer-events-none absolute z-[2] rounded-full"
         style={{
           width: 500,
           height: 500,
-          top: "15%",
-          left: "-5%",
-          background: product.theme.accent,
-          filter: "blur(120px)",
-          opacity: 0.15,
-          transition: "background 0.6s ease",
-        }}
-      />
-      <div
-        className="pointer-events-none absolute z-[1] rounded-full"
-        style={{
-          width: 450,
-          height: 450,
-          bottom: "10%",
-          right: "-8%",
+          bottom: "0%",
+          right: "-10%",
           background: product.theme.backgroundDark,
-          filter: "blur(120px)",
-          opacity: 0.2,
+          filter: "blur(140px)",
+          opacity: 0.18,
           transition: "background 0.6s ease",
         }}
       />
 
-      {/* Floating particles */}
+      {/* Layer 3: Floating particles */}
       <FloatingParticles parallax={parallax} />
 
-      {/* ====== MAIN CONTENT ====== */}
-      <div
-        ref={contentRef}
-        className="relative z-10 w-full h-full flex items-center"
-      >
-        {/* Desktop: 3-column grid / Mobile: stacked */}
-        <div className="w-full h-full flex flex-col md:flex-row items-center justify-between px-6 md:px-12 lg:px-20 xl:px-28 pt-20 pb-32 md:pt-0 md:pb-0">
-
-          {/* LEFT — Product info */}
-          <div className="flex flex-col justify-center items-center md:items-start text-center md:text-left order-2 md:order-1 md:w-[30%] lg:w-[28%] mt-4 md:mt-0">
-            <p
-              className="hero-subtitle uppercase opacity-60 mb-3"
-              style={{
-                fontSize: 12,
-                letterSpacing: "3px",
-                fontWeight: 300,
-              }}
-            >
-              {product.subtitle}
-            </p>
-
-            <h1
-              className="hero-title mb-4"
-              style={{
-                fontFamily: "var(--font-playfair)",
-                fontWeight: 900,
-                fontSize: "clamp(36px, 4vw, 56px)",
-                lineHeight: 0.95,
-              }}
-            >
-              {product.name}
-            </h1>
-
-            <p
-              className="hero-desc mb-6"
-              style={{
-                fontSize: 14,
-                fontWeight: 300,
-                lineHeight: 1.7,
-                opacity: 0.7,
-                maxWidth: 380,
-              }}
-            >
-              {product.description}
-            </p>
-
-            <button
-              onClick={handleAddToCart}
-              className="hero-cta group relative overflow-hidden uppercase transition-all duration-300 hover:border-white/70"
-              style={{
-                border: "2px solid rgba(255,255,255,0.35)",
-                borderRadius: 9999,
-                padding: "12px 36px",
-                fontSize: 12,
-                fontWeight: 500,
-                letterSpacing: "2px",
-              }}
-            >
-              <span className="relative z-10 transition-colors duration-300 group-hover:text-black">
-                Shop Now
-              </span>
-              <span className="absolute inset-0 bg-white scale-x-0 origin-left transition-transform duration-300 group-hover:scale-x-100" />
-            </button>
-          </div>
-
-          {/* CENTER — Product visual */}
-          <div className="flex items-center justify-center order-1 md:order-2 md:w-[40%] lg:w-[44%]">
-            <div
-              className="hero-product will-change-transform"
-              style={{
-                transform: `translate(${parallax.x * 15}px, ${parallax.y * 10}px)`,
-              }}
-            >
-              <ProductVideo product={product} />
-            </div>
-          </div>
-
-          {/* RIGHT — Price */}
-          <div className="flex flex-col items-center md:items-end justify-center order-3 md:w-[30%] lg:w-[28%] mt-2 md:mt-0">
-            <div className="hero-price-block text-center md:text-right">
-              {product.compareAtPrice && (
-                <p
-                  className="line-through mb-1"
-                  style={{ fontSize: 14, opacity: 0.5 }}
-                >
-                  {formatPrice(product.compareAtPrice)}
-                </p>
-              )}
-              <p
-                style={{
-                  fontFamily: "var(--font-playfair)",
-                  fontWeight: 900,
-                  fontSize: "clamp(36px, 4vw, 56px)",
-                  lineHeight: 1,
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {formatPrice(product.price)}
-              </p>
-              <p style={{ fontSize: 12, fontWeight: 300, opacity: 0.5, marginTop: 6 }}>
-                {product.weight}
-              </p>
-            </div>
-          </div>
+      {/* Layer 4: PRODUCT — large, centered, ABOVE bg text */}
+      <div className="absolute inset-0 z-[5] flex items-center justify-center pointer-events-none">
+        <div
+          className="hero-product will-change-transform pointer-events-auto"
+          style={{
+            transform: `translate(${parallax.x * 15}px, ${parallax.y * 10}px)`,
+          }}
+        >
+          <ProductImage product={product} />
         </div>
       </div>
 
-      {/* ====== OVERLAYS ====== */}
+      {/* Layer 5: UI overlay — info, price, thumbs */}
+      <div className="absolute inset-0 z-[10] pointer-events-none">
 
-      {/* Radial vignette */}
+        {/* Bottom-left: Product info */}
+        <div
+          className="hero-info absolute bottom-28 md:bottom-24 left-6 md:left-12 lg:left-20 pointer-events-auto max-w-[320px] md:max-w-[380px]"
+        >
+          <p
+            className="uppercase opacity-50 mb-2"
+            style={{ fontSize: 11, letterSpacing: "3px", fontWeight: 400 }}
+          >
+            {product.subtitle}
+          </p>
+
+          <h1
+            className="mb-1"
+            style={{
+              fontFamily: "var(--font-playfair)",
+              fontWeight: 900,
+              fontSize: "clamp(28px, 3.5vw, 48px)",
+              lineHeight: 1,
+            }}
+          >
+            {product.name}
+          </h1>
+
+          {/* Inline price on mobile */}
+          <div className="flex items-baseline gap-3 mb-3 md:hidden">
+            {product.compareAtPrice && (
+              <span className="line-through text-xs opacity-40">
+                {formatPrice(product.compareAtPrice)}
+              </span>
+            )}
+            <span
+              style={{
+                fontFamily: "var(--font-playfair)",
+                fontWeight: 700,
+                fontSize: 22,
+              }}
+            >
+              {formatPrice(product.price)}
+            </span>
+          </div>
+
+          <p
+            className="mb-5 hidden md:block"
+            style={{
+              fontSize: 13,
+              fontWeight: 300,
+              lineHeight: 1.7,
+              opacity: 0.6,
+              maxWidth: 340,
+            }}
+          >
+            {product.description}
+          </p>
+
+          <button
+            onClick={handleAddToCart}
+            className="group relative overflow-hidden uppercase transition-all duration-300 hover:border-white/70"
+            style={{
+              border: "1.5px solid rgba(255,255,255,0.35)",
+              borderRadius: 9999,
+              padding: "10px 32px",
+              fontSize: 11,
+              fontWeight: 500,
+              letterSpacing: "2.5px",
+            }}
+          >
+            <span className="relative z-10 transition-colors duration-300 group-hover:text-black">
+              Shop Now
+            </span>
+            <span className="absolute inset-0 bg-white scale-x-0 origin-left transition-transform duration-300 group-hover:scale-x-100" />
+          </button>
+        </div>
+
+        {/* Bottom-right: Price (desktop) */}
+        <div className="hero-price-block absolute bottom-28 md:bottom-24 right-6 md:right-12 lg:right-20 pointer-events-none text-right hidden md:block">
+          {product.compareAtPrice && (
+            <p className="line-through mb-1" style={{ fontSize: 14, opacity: 0.4 }}>
+              {formatPrice(product.compareAtPrice)}
+            </p>
+          )}
+          <p
+            style={{
+              fontFamily: "var(--font-playfair)",
+              fontWeight: 900,
+              fontSize: "clamp(36px, 4vw, 56px)",
+              lineHeight: 1,
+              whiteSpace: "nowrap",
+            }}
+          >
+            {formatPrice(product.price)}
+          </p>
+          <p style={{ fontSize: 11, fontWeight: 300, opacity: 0.4, marginTop: 6 }}>
+            {product.weight}
+          </p>
+        </div>
+      </div>
+
+      {/* Layer 6: Vignette */}
       <div
-        className="pointer-events-none absolute inset-0 z-20"
+        className="pointer-events-none absolute inset-0 z-[15]"
         style={{
-          background: "radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.35) 100%)",
+          background: "radial-gradient(ellipse at center, transparent 35%, rgba(0,0,0,0.3) 100%)",
         }}
       />
 
-      {/* Product switcher */}
+      {/* Layer 7: Bottom bar — thumbnails */}
       <ProductSwitcher
         products={products}
         activeIndex={activeIndex}
         onProductChange={onProductChange}
       />
-
-      {/* Scroll indicator */}
-      <div className="hero-scroll absolute bottom-3 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-1 opacity-40">
-        <span style={{ fontSize: 10, letterSpacing: "3px", textTransform: "uppercase", fontWeight: 300 }}>
-          Scroll
-        </span>
-        <svg
-          width="14"
-          height="14"
-          viewBox="0 0 16 16"
-          fill="none"
-          className="animate-[scrollPulse_2s_ease-in-out_infinite]"
-        >
-          <path d="M8 2v12M3 9l5 5 5-5" stroke="currentColor" strokeWidth="1.5" />
-        </svg>
-      </div>
     </section>
   );
 }

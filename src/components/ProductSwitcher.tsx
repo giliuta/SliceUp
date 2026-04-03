@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import Image from "next/image";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { Product } from "@/data/products";
 
@@ -18,10 +19,6 @@ function getVisibleRange(activeIndex: number, total: number) {
   if (start < 0) start = 0;
   if (start + VISIBLE_COUNT > total) start = Math.max(0, total - VISIBLE_COUNT);
   return { start, end: Math.min(start + VISIBLE_COUNT, total) };
-}
-
-function getInitial(name: string): string {
-  return name.charAt(0).toUpperCase();
 }
 
 export default function ProductSwitcher({
@@ -54,18 +51,18 @@ export default function ProductSwitcher({
   });
 
   return (
-    <div className="hero-thumbs absolute bottom-8 md:bottom-10 left-0 right-0 z-20 flex items-center justify-center gap-3 px-4">
+    <div className="hero-thumbs absolute bottom-5 md:bottom-7 left-0 right-0 z-[20] flex items-center justify-center gap-2 px-4">
       {/* Left arrow */}
       <button
         onClick={goPrev}
-        className="w-9 h-9 flex items-center justify-center rounded-full border border-white/20 text-white/50 hover:text-white hover:border-white/50 transition-all duration-200"
+        className="w-8 h-8 flex items-center justify-center rounded-full border border-white/15 text-white/40 hover:text-white hover:border-white/40 transition-all duration-200"
         aria-label="Previous product"
       >
-        <ChevronLeft size={16} strokeWidth={1.5} />
+        <ChevronLeft size={14} strokeWidth={1.5} />
       </button>
 
-      {/* Thumbnails */}
-      <div className="flex items-center gap-2">
+      {/* Thumbnails — small product pack images */}
+      <div className="flex items-center gap-1.5">
         {visible.map((p, i) => {
           const realIndex = start + i;
           const isActive = realIndex === activeIndex;
@@ -73,23 +70,25 @@ export default function ProductSwitcher({
             <button
               key={p.id}
               onClick={() => onProductChange(realIndex)}
-              className="flex-shrink-0 rounded-full flex items-center justify-center transition-all duration-300"
+              className="flex-shrink-0 rounded-lg overflow-hidden transition-all duration-300"
               style={{
-                width: 56,
-                height: 56,
-                border: isActive ? "2px solid rgba(255,255,255,0.85)" : "1.5px solid rgba(255,255,255,0.15)",
-                backgroundColor: isActive ? "rgba(255,255,255,0.12)" : "transparent",
-                transform: isActive ? "scale(1.1)" : "scale(1)",
-                fontFamily: "var(--font-playfair)",
-                fontWeight: 700,
-                fontSize: 18,
-                color: isActive ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.35)",
-                letterSpacing: "0.5px",
+                width: isActive ? 52 : 44,
+                height: isActive ? 52 : 44,
+                border: isActive ? "2px solid rgba(255,255,255,0.7)" : "1.5px solid rgba(255,255,255,0.1)",
+                backgroundColor: isActive ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.15)",
+                opacity: isActive ? 1 : 0.5,
+                padding: 3,
               }}
               aria-label={`Switch to ${p.name}`}
               title={p.name}
             >
-              {getInitial(p.name)}
+              <Image
+                src={p.images.pack}
+                alt={p.name}
+                width={48}
+                height={48}
+                className="w-full h-full object-contain"
+              />
             </button>
           );
         })}
@@ -98,14 +97,14 @@ export default function ProductSwitcher({
       {/* Right arrow */}
       <button
         onClick={goNext}
-        className="w-9 h-9 flex items-center justify-center rounded-full border border-white/20 text-white/50 hover:text-white hover:border-white/50 transition-all duration-200"
+        className="w-8 h-8 flex items-center justify-center rounded-full border border-white/15 text-white/40 hover:text-white hover:border-white/40 transition-all duration-200"
         aria-label="Next product"
       >
-        <ChevronRight size={16} strokeWidth={1.5} />
+        <ChevronRight size={14} strokeWidth={1.5} />
       </button>
 
       {/* Counter */}
-      <span className="text-[11px] font-light text-white/30 tracking-wider ml-2">
+      <span className="text-[10px] font-light text-white/25 tracking-wider ml-1.5">
         {activeIndex + 1}/{products.length}
       </span>
     </div>

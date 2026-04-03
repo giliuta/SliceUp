@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useEffect } from "react";
+import { useCallback, useRef, useEffect, useState } from "react";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import Image from "next/image";
@@ -11,6 +11,68 @@ import { useCartStore } from "@/stores/cartStore";
 gsap.registerPlugin(useGSAP);
 
 const THUMBS_PER_PAGE = 4;
+const BADGES: Record<string, string> = {
+  "dragon-fruit": "New",
+  "strawberry-slices": "Best seller",
+  "pineapple-rings": "Popular",
+  "chilli-pepper": "Spicy",
+};
+const PAIRS: Record<string, string> = {
+  "dragon-fruit": "Yogurt \u00b7 Smoothie",
+  "orange-chips": "Cocktails \u00b7 Tea",
+  "strawberry-slices": "Oatmeal \u00b7 Ice cream",
+  "apple-chips": "Cheese board \u00b7 Wine",
+  "pineapple-rings": "Cocktails \u00b7 Desserts",
+  "mushroom-chips": "Ramen \u00b7 Risotto",
+  "chilli-pepper": "Pizza \u00b7 Pasta",
+  "tomato-chips": "Bruschetta \u00b7 Salads",
+};
+const TESTIMONIALS = [
+  "\u201cBest dried mango I\u2019ve ever tried\u201d \u2014 Maria K.",
+  "\u201cFinally, snacks with zero junk\u201d \u2014 Alex D.",
+  "\u201cPremium quality, fast delivery\u201d \u2014 Elena P.",
+  "\u201cMy kids love the apple chips!\u201d \u2014 Sophia R.",
+  "\u201cThe pineapple rings are addictive\u201d \u2014 James W.",
+  "\u201cPerfect for my restaurant menu\u201d \u2014 Chef Nikos",
+];
+
+// Animated price counter
+function AnimatedPrice({ value }: { value: number }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const prevRef = useRef(value);
+  useEffect(() => {
+    if (prevRef.current === value || !ref.current) { prevRef.current = value; return; }
+    const obj = { v: prevRef.current };
+    gsap.to(obj, {
+      v: value, duration: 0.5, ease: "power2.out",
+      onUpdate: () => { if (ref.current) ref.current.textContent = formatPrice(Math.round(obj.v)); },
+    });
+    prevRef.current = value;
+  }, [value]);
+  return <span ref={ref}>{formatPrice(value)}</span>;
+}
+
+// Floating particles layer
+function Particles() {
+  const dots = Array.from({ length: 10 }, (_, i) => ({
+    top: `${10 + Math.random() * 80}%`,
+    left: `${5 + Math.random() * 90}%`,
+    size: 3 + Math.random() * 3,
+    dur: 6 + Math.random() * 6,
+    delay: Math.random() * 4,
+  }));
+  return (
+    <div className="absolute inset-0 pointer-events-none overflow-hidden" style={{ zIndex: 0 }}>
+      {dots.map((d, i) => (
+        <div key={i} className="absolute rounded-full" style={{
+          top: d.top, left: d.left, width: d.size, height: d.size,
+          background: "rgba(255,255,255,0.07)",
+          animation: `particleDrift ${d.dur}s ease-in-out ${d.delay}s infinite`,
+        }} />
+      ))}
+    </div>
+  );
+}
 
 interface HeroScreenProps {
   activeIndex: number;
@@ -26,14 +88,17 @@ export default function HeroScreen({ activeIndex, thumbPage, onProductChange }: 
   const heroRef = useRef<HTMLDivElement>(null);
   const addItem = useCartStore((s) => s.addItem);
   const openCart = useCartStore((s) => s.openCart);
-  const totalItems = useCartStore((s) => s.totalItems);
-  const toggleCart = useCartStore((s) => s.toggleCart);
+  const badge = BADGES[product.id];
+  const pair = PAIRS[product.id];
 
   const goTo = useCallback((i: number, dir: 1 | -1) => {
     if (isTransitioning.current) return;
     const idx = (i + products.length) % products.length;
     if (idx === activeIndex) return;
     isTransitioning.current = true;
+
+    // Haptic feedback on mobile
+    if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(10);
 
     const prevPack = packRefs.current[activeIndex];
     const nextPack = packRefs.current[idx];
@@ -54,7 +119,7 @@ export default function HeroScreen({ activeIndex, thumbPage, onProductChange }: 
     setTimeout(() => { isTransitioning.current = false; }, 650);
   }, [activeIndex, onProductChange]);
 
-  // Mouse parallax on active pack (desktop only)
+  // Mouse parallax
   useEffect(() => {
     if ("ontouchstart" in window) return;
     const handler = (e: MouseEvent) => {
@@ -68,7 +133,7 @@ export default function HeroScreen({ activeIndex, thumbPage, onProductChange }: 
     return () => window.removeEventListener("mousemove", handler);
   }, [activeIndex]);
 
-  // Listen for scroll events from parent (wheel/swipe delegated)
+  // Hero-scroll events from parent
   useEffect(() => {
     const handler = (e: Event) => {
       const dir = (e as CustomEvent).detail.dir as 1 | -1;
@@ -78,7 +143,7 @@ export default function HeroScreen({ activeIndex, thumbPage, onProductChange }: 
     return () => window.removeEventListener("hero-scroll", handler);
   }, [activeIndex, goTo]);
 
-  // Keyboard ↑↓ for product switch
+  // Keyboard ↑↓
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === "ArrowDown") { e.preventDefault(); goTo(activeIndex + 1, 1); }
@@ -88,6 +153,7 @@ export default function HeroScreen({ activeIndex, thumbPage, onProductChange }: 
     return () => window.removeEventListener("keydown", handler);
   }, [activeIndex, goTo]);
 
+  // Initial load
   useGSAP(() => {
     if (hasAnimated.current) return;
     hasAnimated.current = true;
@@ -97,9 +163,11 @@ export default function HeroScreen({ activeIndex, thumbPage, onProductChange }: 
       .from(".hero-left > *", { opacity: 0, y: 20, duration: 0.5, stagger: 0.08 }, 0.5)
       .from(".hero-mobile-inner > *", { opacity: 0, y: 15, duration: 0.45, stagger: 0.06 }, 0.5)
       .from(".hero-right", { opacity: 0, x: 20, duration: 0.5 }, 0.6)
-      .from(".hero-bottom-price", { opacity: 0, y: 15, duration: 0.4 }, 0.7);
+      .from(".hero-bottom-price", { opacity: 0, y: 15, duration: 0.4 }, 0.7)
+      .from(".hero-ticker", { opacity: 0, duration: 0.5 }, 0.9);
   }, { scope: heroRef });
 
+  // Text switch
   useGSAP(() => {
     if (!hasAnimated.current) return;
     gsap.fromTo(".hero-bg-text span", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.5, ease: "power2.out" });
@@ -111,10 +179,26 @@ export default function HeroScreen({ activeIndex, thumbPage, onProductChange }: 
   const thumbStart = thumbPage * THUMBS_PER_PAGE;
   const visibleThumbs = products.slice(thumbStart, thumbStart + THUMBS_PER_PAGE);
   const handleShopNow = useCallback(() => { addItem(product); openCart(); }, [product, addItem, openCart]);
-  const cartCount = totalItems();
+
+  const tickerText = TESTIMONIALS.join("     \u2022     ");
 
   return (
     <div ref={heroRef} className="w-full h-full relative">
+      {/* Particles */}
+      <Particles />
+
+      {/* Vignette */}
+      <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 50, background: "radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.3) 100%)" }} />
+
+      {/* Gradient mesh blobs */}
+      <div className="absolute pointer-events-none" style={{ width: 500, height: 500, top: "10%", left: "-8%", background: "currentColor", opacity: 0.08, borderRadius: "50%", filter: "blur(120px)", animation: "glowPulse 6s ease-in-out infinite", color: product.theme.accent, transition: "color 0.8s ease" }} />
+      <div className="absolute pointer-events-none" style={{ width: 400, height: 400, bottom: "5%", right: "-5%", background: "currentColor", opacity: 0.1, borderRadius: "50%", filter: "blur(100px)", animation: "glowPulse 8s ease-in-out 2s infinite", color: product.theme.backgroundDark, transition: "color 0.8s ease" }} />
+
+      {/* Light leak */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden" style={{ zIndex: 3 }}>
+        <div style={{ position: "absolute", top: "-20%", left: 0, width: "40%", height: "140%", background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent)", animation: "lightLeak 10s linear infinite", transformOrigin: "center" }} />
+      </div>
+
       {/* BG TEXT */}
       <div className="hero-bg-text absolute inset-0 flex items-center justify-center pointer-events-none select-none overflow-hidden" style={{ zIndex: 1 }}>
         <span style={{ fontFamily: "var(--font-playfair)", fontWeight: 900, fontSize: "clamp(100px, 22vw, 400px)", textTransform: "uppercase", color: "rgba(255,255,255,0.12)", lineHeight: 0.85, whiteSpace: "nowrap", letterSpacing: 10 }}>
@@ -123,50 +207,66 @@ export default function HeroScreen({ activeIndex, thumbPage, onProductChange }: 
       </div>
 
       {/* PACKS */}
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 2 }}>
+      <div className="absolute inset-0 flex items-center justify-center" data-cursor-label="Explore" style={{ zIndex: 4 }}>
         {products.map((p, i) => (
           <div key={p.id} ref={(el) => { packRefs.current[i] = el; }}
             className="absolute will-change-transform md:translate-x-[5%] -translate-y-[5%] md:translate-y-0"
             style={{ maxWidth: 320, maxHeight: 460, width: "52vmin", height: "70vmin", visibility: i === 0 ? "visible" : "hidden" }}>
             <Image src={p.images.pack} alt={p.name} width={350} height={500}
-              className="w-full h-full object-contain drop-shadow-[0_25px_50px_rgba(0,0,0,0.25)]" priority={i < 3} loading="eager" />
+              className="w-full h-full object-contain drop-shadow-[0_25px_50px_rgba(0,0,0,0.3)] hover:translate-y-[-4px] transition-transform duration-500"
+              priority={i < 3} loading="eager" />
           </div>
         ))}
+        {/* Shadow on "floor" */}
+        <div className="absolute md:translate-x-[5%]" style={{ bottom: "8%", width: "30vmin", height: 20, background: "rgba(0,0,0,0.2)", borderRadius: "50%", filter: "blur(15px)", zIndex: -1 }} />
       </div>
 
       {/* LEFT (desktop) */}
       <div className="hero-left absolute z-10 hidden md:flex flex-col" style={{ left: 48, top: "50%", transform: "translateY(-50%)", maxWidth: 340 }}>
-        <p style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: 3, opacity: 0.6, marginBottom: 8 }}>{product.subtitle}</p>
-        <h1 style={{ fontFamily: "var(--font-playfair)", fontSize: 42, fontWeight: 700, lineHeight: 1.05, marginBottom: 10 }}>{product.name}</h1>
-        <div className="flex items-baseline gap-3" style={{ marginBottom: 12 }}>
-          <span style={{ fontSize: 16, fontWeight: 700 }}>{formatPrice(product.price)}</span>
-          {product.compareAtPrice && <span style={{ fontSize: 14, opacity: 0.5, textDecoration: "line-through" }}>{formatPrice(product.compareAtPrice)}</span>}
+        <p style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: 3, opacity: 0.5, marginBottom: 8 }}>{product.subtitle}</p>
+        <div className="flex items-center gap-3 mb-2">
+          <h1 style={{ fontFamily: "var(--font-playfair)", fontSize: 42, fontWeight: 700, lineHeight: 1.05 }}>{product.name}</h1>
+          {badge && (
+            <span style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: 1.5, padding: "3px 10px", borderRadius: 20, background: "rgba(255,255,255,0.15)", backdropFilter: "blur(4px)", border: "1px solid rgba(255,255,255,0.1)", whiteSpace: "nowrap" }}>
+              {badge}
+            </span>
+          )}
         </div>
-        <p style={{ fontSize: 13, lineHeight: 1.6, opacity: 0.65, marginBottom: 20 }}>{product.description}</p>
-        <button onClick={handleShopNow} className="group relative overflow-hidden" style={{ border: "1.5px solid rgba(255,255,255,0.7)", background: "transparent", borderRadius: 30, padding: "12px 32px", fontSize: 13, fontWeight: 500, cursor: "pointer", color: "white", alignSelf: "flex-start" }}>
+        <div className="flex items-baseline gap-3" style={{ marginBottom: 6 }}>
+          <span style={{ fontSize: 16, fontWeight: 700 }}>{formatPrice(product.price)}</span>
+          {product.compareAtPrice && <span style={{ fontSize: 14, opacity: 0.4, textDecoration: "line-through" }}>{formatPrice(product.compareAtPrice)}</span>}
+          <span style={{ fontSize: 11, opacity: 0.35, marginLeft: 4 }}>{product.weight}</span>
+        </div>
+        {pair && <p style={{ fontSize: 11, opacity: 0.35, marginBottom: 10 }}>Pairs with: {pair}</p>}
+        <p style={{ fontSize: 13, lineHeight: 1.6, opacity: 0.6, marginBottom: 20 }}>{product.description}</p>
+        {/* Shop now with shimmer */}
+        <button onClick={handleShopNow} className="group relative overflow-hidden" style={{ border: "1.5px solid rgba(255,255,255,0.5)", background: "transparent", borderRadius: 30, padding: "12px 32px", fontSize: 13, fontWeight: 500, cursor: "pointer", color: "white", alignSelf: "flex-start" }}>
           <span className="relative z-10 transition-colors duration-300 group-hover:text-black">Shop now</span>
           <span className="absolute inset-0 bg-white scale-x-0 origin-left transition-transform duration-300 group-hover:scale-x-100" />
+          <span className="absolute inset-0 opacity-0 group-hover:opacity-0" style={{ background: "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.08) 50%, transparent 100%)", animation: "shimmer 3s infinite" }} />
         </button>
       </div>
 
       {/* MOBILE INFO */}
-      <div className="absolute z-10 md:hidden left-0 right-0 bottom-0 px-5 pb-6 pt-16 text-center" style={{ background: "linear-gradient(to top, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.2) 60%, transparent 100%)" }}>
+      <div className="absolute z-10 md:hidden left-0 right-0 bottom-0 px-5 pb-5 pt-14 text-center" style={{ background: "linear-gradient(to top, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.2) 60%, transparent 100%)" }}>
         <div className="hero-mobile-inner">
-          <p style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: 3, opacity: 0.7, marginBottom: 4 }}>{product.subtitle}</p>
-          <h1 style={{ fontFamily: "var(--font-playfair)", fontSize: 32, fontWeight: 700, lineHeight: 1.1, marginBottom: 4, textShadow: "0 2px 12px rgba(0,0,0,0.3)" }}>{product.name}</h1>
-          <p style={{ fontSize: 12, lineHeight: 1.5, opacity: 0.75, marginBottom: 8, maxWidth: 280, marginLeft: "auto", marginRight: "auto" }}>{product.description}</p>
-          <div className="flex items-baseline justify-center gap-3 mb-3">
-            <span style={{ fontFamily: "var(--font-playfair)", fontSize: 30, fontWeight: 700, textShadow: "0 2px 10px rgba(0,0,0,0.3)" }}>{formatPrice(product.price)}</span>
-            {product.compareAtPrice && <span style={{ fontSize: 14, opacity: 0.5, textDecoration: "line-through" }}>{formatPrice(product.compareAtPrice)}</span>}
+          <p style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: 3, opacity: 0.6, marginBottom: 3 }}>{product.subtitle}</p>
+          <div className="flex items-center justify-center gap-2 mb-1">
+            <h1 style={{ fontFamily: "var(--font-playfair)", fontSize: 30, fontWeight: 700, lineHeight: 1.1, textShadow: "0 2px 12px rgba(0,0,0,0.3)" }}>{product.name}</h1>
+            {badge && <span style={{ fontSize: 8, padding: "2px 8px", borderRadius: 20, background: "rgba(255,255,255,0.15)", letterSpacing: 1, textTransform: "uppercase" }}>{badge}</span>}
           </div>
-          <button onClick={handleShopNow} className="group relative overflow-hidden mx-auto" style={{ border: "1.5px solid rgba(255,255,255,0.7)", background: "rgba(255,255,255,0.1)", backdropFilter: "blur(8px)", borderRadius: 30, padding: "11px 36px", fontSize: 13, fontWeight: 500, color: "white" }}>
+          <div className="flex items-baseline justify-center gap-3 mb-2">
+            <span style={{ fontFamily: "var(--font-playfair)", fontSize: 28, fontWeight: 700, textShadow: "0 2px 10px rgba(0,0,0,0.3)" }}>{formatPrice(product.price)}</span>
+            {product.compareAtPrice && <span style={{ fontSize: 13, opacity: 0.45, textDecoration: "line-through" }}>{formatPrice(product.compareAtPrice)}</span>}
+          </div>
+          <button onClick={handleShopNow} className="group relative overflow-hidden mx-auto" style={{ border: "1.5px solid rgba(255,255,255,0.6)", background: "rgba(255,255,255,0.08)", backdropFilter: "blur(8px)", borderRadius: 30, padding: "10px 34px", fontSize: 12, fontWeight: 500, color: "white" }}>
             <span className="relative z-10 transition-colors duration-300 group-hover:text-black">Shop now</span>
             <span className="absolute inset-0 bg-white scale-x-0 origin-left transition-transform duration-300 group-hover:scale-x-100" />
           </button>
-          <div className="flex items-center justify-center gap-1.5 mt-4">
+          <div className="flex items-center justify-center gap-1.5 mt-3">
             {products.map((_, i) => (
               <button key={i} onClick={() => goTo(i, i > activeIndex ? 1 : -1)} className="rounded-full transition-all duration-300"
-                style={{ width: i === activeIndex ? 18 : 5, height: 5, backgroundColor: i === activeIndex ? "white" : "rgba(255,255,255,0.35)" }} aria-label={`Product ${i + 1}`} />
+                style={{ width: i === activeIndex ? 18 : 5, height: 5, backgroundColor: i === activeIndex ? "white" : "rgba(255,255,255,0.3)" }} aria-label={`Product ${i + 1}`} />
             ))}
           </div>
         </div>
@@ -175,8 +275,8 @@ export default function HeroScreen({ activeIndex, thumbPage, onProductChange }: 
       {/* RIGHT (desktop) */}
       <div className="hero-right absolute z-10 hidden md:flex flex-col items-center" style={{ right: 48, top: "50%", transform: "translateY(-50%)" }}>
         <div className="flex items-center gap-2 mb-4">
-          <button onClick={() => goTo(activeIndex - 1, -1)} className="flex items-center justify-center rounded-full hover:bg-white/10 transition-colors" style={{ width: 40, height: 40, border: "1px solid rgba(255,255,255,0.3)" }}><ChevronLeft size={18} strokeWidth={1.5} /></button>
-          <button onClick={() => goTo(activeIndex + 1, 1)} className="flex items-center justify-center rounded-full hover:bg-white/10 transition-colors" style={{ width: 40, height: 40, border: "1px solid rgba(255,255,255,0.3)" }}><ChevronRight size={18} strokeWidth={1.5} /></button>
+          <button onClick={() => goTo(activeIndex - 1, -1)} className="flex items-center justify-center rounded-full hover:bg-white/10 transition-colors" style={{ width: 40, height: 40, border: "1px solid rgba(255,255,255,0.2)", animation: "arrowBounce 5s ease infinite" }}><ChevronLeft size={18} strokeWidth={1.5} /></button>
+          <button onClick={() => goTo(activeIndex + 1, 1)} className="flex items-center justify-center rounded-full hover:bg-white/10 transition-colors" style={{ width: 40, height: 40, border: "1px solid rgba(255,255,255,0.2)", animation: "arrowBounce 5s ease 2.5s infinite" }}><ChevronRight size={18} strokeWidth={1.5} /></button>
         </div>
         <div className="grid grid-cols-2 gap-2">
           {visibleThumbs.map((p, i) => {
@@ -184,18 +284,28 @@ export default function HeroScreen({ activeIndex, thumbPage, onProductChange }: 
             const active = realIdx === activeIndex;
             return (
               <button key={p.id} onClick={() => goTo(realIdx, realIdx > activeIndex ? 1 : -1)} className="overflow-hidden flex items-center justify-center transition-all duration-300"
-                style={{ width: 56, height: 56, borderRadius: 12, border: active ? "2px solid white" : "1.5px solid rgba(255,255,255,0.15)", background: active ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)", opacity: active ? 1 : 0.6, padding: 4 }} title={p.name}>
+                style={{ width: 56, height: 56, borderRadius: 12, border: active ? "2px solid white" : "1.5px solid rgba(255,255,255,0.12)", background: active ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)", opacity: active ? 1 : 0.55, padding: 4 }} title={p.name}>
                 <Image src={p.images.pack} alt={p.name} width={48} height={48} className="w-full h-full object-contain" />
               </button>
             );
           })}
         </div>
-        <span className="text-[10px] opacity-30 mt-3 tracking-wider">{activeIndex + 1} / {products.length}</span>
+        <span className="text-[10px] opacity-25 mt-3 tracking-wider">{activeIndex + 1} / {products.length}</span>
       </div>
 
-      {/* BOTTOM PRICE (desktop) */}
+      {/* BOTTOM PRICE (desktop) — animated counter */}
       <div className="hero-bottom-price absolute z-10 hidden md:block" style={{ bottom: 40, left: "50%", transform: "translateX(-50%)" }}>
-        <span style={{ fontFamily: "var(--font-playfair)", fontSize: 48, fontWeight: 700 }}>{formatPrice(product.price)}</span>
+        <span style={{ fontFamily: "var(--font-playfair)", fontSize: 48, fontWeight: 700 }}>
+          <AnimatedPrice value={product.price} />
+        </span>
+      </div>
+
+      {/* Testimonials ticker */}
+      <div className="hero-ticker absolute z-10 hidden md:block left-0 right-0 overflow-hidden" style={{ bottom: 12, opacity: 0.2 }}>
+        <div className="whitespace-nowrap" style={{ animation: "marquee 40s linear infinite", fontSize: 11, letterSpacing: 1 }}>
+          <span>{tickerText}</span>
+          <span className="ml-8">{tickerText}</span>
+        </div>
       </div>
     </div>
   );

@@ -75,10 +75,10 @@ export default function Home() {
     const bgColor = next === 0 ? products[activeProduct].theme.background : "#111";
     gsap.to(document.body, { backgroundColor: bgColor, duration: dur, ease: "power2.inOut" });
 
-    if (current) gsap.to(current, { x: dir * -100 + "%", opacity: 0, scale: 0.92, duration: dur, ease: "power3.inOut", force3D: true });
+    if (current) gsap.to(current, { x: dir * -100 + "%", opacity: 0, scale: 0.92, filter: "blur(8px)", duration: dur, ease: "power3.inOut", force3D: true });
     if (target) {
-      gsap.set(target, { x: dir * 100 + "%", opacity: 0, scale: 0.95, visibility: "visible" });
-      gsap.to(target, { x: "0%", opacity: 1, scale: 1, duration: dur, ease: "power3.inOut", force3D: true, delay: reducedMotion ? 0 : 0.05 });
+      gsap.set(target, { x: dir * 100 + "%", opacity: 0, scale: 0.95, filter: "blur(8px)", visibility: "visible" });
+      gsap.to(target, { x: "0%", opacity: 1, scale: 1, filter: "blur(0px)", duration: dur, ease: "power3.inOut", force3D: true, delay: reducedMotion ? 0 : 0.05 });
     }
 
     setScreenIndex(next);

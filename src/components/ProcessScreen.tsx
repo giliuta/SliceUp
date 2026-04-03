@@ -28,9 +28,9 @@ export default function ProcessScreen() {
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         <div className="absolute w-[400px] h-[400px] rounded-full" style={{ bottom: "10%", right: "20%", background: "rgba(100,180,80,0.05)", filter: "blur(120px)" }} />
       </div>
-      <div className="relative z-10 max-w-2xl w-full">
-        <p className="process-title text-xs uppercase tracking-[4px] opacity-40 mb-3 text-center md:text-left">How it&apos;s made</p>
-        <h2 className="process-title mb-12 text-center md:text-left" style={{ fontFamily: "var(--font-playfair)", fontSize: "clamp(32px, 4vw, 48px)", fontWeight: 700, lineHeight: 1.15 }}>
+      <div className="relative z-10 max-w-2xl w-full mx-auto">
+        <p className="process-title text-xs uppercase tracking-[4px] opacity-40 mb-3 text-center">How it&apos;s made</p>
+        <h2 className="process-title mb-14 text-center" style={{ fontFamily: "var(--font-playfair)", fontSize: "clamp(32px, 4vw, 48px)", fontWeight: 700, lineHeight: 1.15 }}>
           From Farm<br />to Your Table
         </h2>
         <div className="relative flex flex-col gap-10 md:gap-14">

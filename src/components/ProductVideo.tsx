@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
+import Image from "next/image";
 import type { Product } from "@/data/products";
 
 interface ProductVideoProps {
@@ -9,8 +10,10 @@ interface ProductVideoProps {
 
 export default function ProductVideo({ product }: ProductVideoProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [videoLoaded, setVideoLoaded] = useState(false);
 
   useEffect(() => {
+    setVideoLoaded(false);
     const video = videoRef.current;
     if (!video) return;
     video.load();
@@ -22,7 +25,7 @@ export default function ProductVideo({ product }: ProductVideoProps) {
       className="relative"
       style={{ width: "55vmin", height: "73vmin", maxWidth: "480px", maxHeight: "640px" }}
     >
-      {/* Video layer — shown when video files exist */}
+      {/* Video layer — hidden until loaded */}
       <video
         ref={videoRef}
         autoPlay
@@ -30,33 +33,34 @@ export default function ProductVideo({ product }: ProductVideoProps) {
         loop
         playsInline
         preload="auto"
-        className="video-blend absolute inset-0 w-full h-full object-contain opacity-0 transition-opacity duration-500"
+        className="video-blend absolute inset-0 w-full h-full object-contain transition-opacity duration-500"
+        style={{ opacity: videoLoaded ? 1 : 0 }}
         key={product.id}
-        onLoadedData={(e) => {
-          (e.target as HTMLVideoElement).style.opacity = "1";
-        }}
+        onLoadedData={() => setVideoLoaded(true)}
       >
         <source src={product.video.webm} type="video/webm" />
         <source src={product.video.mp4} type="video/mp4" />
       </video>
 
-      {/* Placeholder — large product name, visible until real media loads */}
-      <div className="absolute inset-0 flex items-center justify-center">
-        <span
-          className="text-white/[0.12] text-center leading-none select-none pointer-events-none"
-          style={{
-            fontFamily: "var(--font-playfair)",
-            fontWeight: 900,
-            fontSize: "clamp(60px, 12vmin, 140px)",
-          }}
-        >
-          {product.name}
-        </span>
+      {/* Pack photo — shown as main visual */}
+      <div
+        className="absolute inset-0 flex items-center justify-center transition-opacity duration-500"
+        style={{ opacity: videoLoaded ? 0 : 1 }}
+      >
+        <Image
+          src={product.images.pack}
+          alt={product.name}
+          width={400}
+          height={533}
+          className="object-contain drop-shadow-2xl"
+          style={{ width: "85%", height: "85%" }}
+          priority
+        />
       </div>
 
       {/* Glow behind product */}
       <div
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[70%] h-[70%] rounded-full opacity-25 -z-10"
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[70%] h-[70%] rounded-full opacity-20 -z-10"
         style={{
           backgroundColor: product.theme.accent,
           filter: "blur(100px)",

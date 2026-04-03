@@ -23,7 +23,7 @@ export interface Product {
   price: number;
   compareAtPrice?: number;
   weight: string;
-  category: "fruit" | "vegetable" | "mix" | "soup";
+  category: "fruit" | "vegetable" | "citrus" | "spice";
   theme: ProductTheme;
   video: ProductVideo;
   images: ProductImages;

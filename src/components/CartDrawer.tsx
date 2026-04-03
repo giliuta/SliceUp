@@ -37,6 +37,7 @@ export default function CartDrawer() {
       {/* Drawer */}
       <aside
         ref={drawerRef}
+        data-cart-drawer
         className="fixed top-0 right-0 z-[70] h-full w-full max-w-md bg-black/90 backdrop-blur-xl text-white transition-transform duration-300 ease-out flex flex-col"
         style={{ transform: isOpen ? "translateX(0)" : "translateX(100%)" }}
       >

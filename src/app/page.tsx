@@ -2,31 +2,26 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import gsap from "gsap";
-import { useGSAP } from "@gsap/react";
-import Image from "next/image";
-import { ShoppingBag, ChevronLeft, ChevronRight, Menu as MenuIcon } from "lucide-react";
-import { products, formatPrice } from "@/data/products";
-import type { Product } from "@/data/products";
+import { ShoppingBag, Menu as MenuIcon } from "lucide-react";
+import { products } from "@/data/products";
 import { useCartStore } from "@/stores/cartStore";
 import CartDrawer from "@/components/CartDrawer";
+import HeroScreen from "@/components/HeroScreen";
+import CollabScreen from "@/components/CollabScreen";
+import ContactScreen from "@/components/ContactScreen";
 
-gsap.registerPlugin(useGSAP);
-
+const SCREENS = ["hero", "collab", "contact"] as const;
 const THUMBS_PER_PAGE = 4;
 
 export default function Home() {
-  const [activeIndex, setActiveIndex] = useState(0);
+  const [screenIndex, setScreenIndex] = useState(0);
+  const [activeProduct, setActiveProduct] = useState(0);
   const [thumbPage, setThumbPage] = useState(0);
-  const product = products[activeIndex];
-  const containerRef = useRef<HTMLDivElement>(null);
-  const packRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const prevIndexRef = useRef(0);
-  const hasAnimated = useRef(false);
+  const screenRefs = useRef<(HTMLDivElement | null)[]>([]);
   const isTransitioning = useRef(false);
-  const addItem = useCartStore((s) => s.addItem);
-  const openCart = useCartStore((s) => s.openCart);
-  const totalItems = useCartStore((s) => s.totalItems);
   const toggleCart = useCartStore((s) => s.toggleCart);
+  const totalItems = useCartStore((s) => s.totalItems);
+  const cartCount = totalItems();
 
   // --- Lock viewport ---
   useEffect(() => {
@@ -42,88 +37,89 @@ export default function Home() {
     };
   }, []);
 
-  // --- Initial bg color ---
+  // --- Initial bg ---
   useEffect(() => {
-    document.body.style.backgroundColor = product.theme.background;
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    document.body.style.backgroundColor = products[0].theme.background;
+  }, []);
 
-  // --- Product switch ---
-  const goTo = useCallback((i: number, dir: 1 | -1) => {
+  // --- Horizontal screen switch ---
+  const goScreen = useCallback((dir: 1 | -1) => {
     if (isTransitioning.current) return;
-    const idx = (i + products.length) % products.length;
-    if (idx === activeIndex) return;
+    const next = screenIndex + dir;
+    if (next < 0 || next >= SCREENS.length) return;
     isTransitioning.current = true;
 
-    const prevIdx = activeIndex;
-    const prevPack = packRefs.current[prevIdx];
-    const nextPack = packRefs.current[idx];
-    prevIndexRef.current = prevIdx;
+    const current = screenRefs.current[screenIndex];
+    const target = screenRefs.current[next];
 
-    // --- Smooth background color interpolation ---
-    gsap.to(document.body, {
-      backgroundColor: products[idx].theme.background,
-      duration: 0.7,
-      ease: "power2.inOut",
-    });
+    // Animate bg color for non-hero screens
+    if (next > 0) {
+      gsap.to(document.body, { backgroundColor: "#111", duration: 0.6, ease: "power2.inOut" });
+    } else {
+      gsap.to(document.body, { backgroundColor: products[activeProduct].theme.background, duration: 0.6, ease: "power2.inOut" });
+    }
 
-    // --- Animate OLD pack OUT ---
-    if (prevPack) {
-      gsap.to(prevPack, {
-        y: dir * -80,
-        opacity: 0,
-        scale: 0.92,
-        duration: 0.4,
-        ease: "power3.in",
-        force3D: true,
-        onComplete: () => {
-          gsap.set(prevPack, { visibility: "hidden", y: 0, opacity: 1, scale: 1 });
-        },
+    // Slide current OUT
+    if (current) {
+      gsap.to(current, {
+        x: dir * -100 + "%", opacity: 0, scale: 0.92,
+        duration: 0.65, ease: "power3.inOut", force3D: true,
       });
     }
 
-    // --- Animate NEW pack IN (slightly delayed) ---
-    if (nextPack) {
-      gsap.set(nextPack, { visibility: "visible", y: dir * 100, opacity: 0, scale: 0.9 });
-      gsap.to(nextPack, {
-        y: 0,
-        opacity: 1,
-        scale: 1,
-        duration: 0.55,
-        ease: "power3.out",
-        delay: 0.1,
-        force3D: true,
+    // Slide next IN
+    if (target) {
+      gsap.set(target, { x: dir * 100 + "%", opacity: 0, scale: 0.95, visibility: "visible" });
+      gsap.to(target, {
+        x: "0%", opacity: 1, scale: 1,
+        duration: 0.65, ease: "power3.inOut", force3D: true, delay: 0.05,
       });
     }
 
-    // Update state (triggers text change)
-    setTimeout(() => setActiveIndex(idx), 150);
+    setScreenIndex(next);
+    setTimeout(() => { isTransitioning.current = false; }, 700);
+  }, [screenIndex, activeProduct]);
+
+  // --- Product switch (only on hero) ---
+  const goProduct = useCallback((idx: number, dir: 1 | -1) => {
+    setActiveProduct(idx);
     setThumbPage(Math.floor(idx / THUMBS_PER_PAGE));
+  }, []);
 
-    setTimeout(() => { isTransitioning.current = false; }, 650);
-  }, [activeIndex]);
-
-  // --- Keyboard ---
+  // --- Keyboard: ←→ = screens, ↑↓ = products ---
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === "ArrowRight" || e.key === "ArrowDown") { e.preventDefault(); goTo(activeIndex + 1, 1); }
-      if (e.key === "ArrowLeft" || e.key === "ArrowUp") { e.preventDefault(); goTo(activeIndex - 1, -1); }
+      if (e.key === "ArrowRight") { e.preventDefault(); goScreen(1); }
+      if (e.key === "ArrowLeft") { e.preventDefault(); goScreen(-1); }
+      // ↑↓ only work on hero — handled inside HeroScreen
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [activeIndex, goTo]);
+  }, [goScreen]);
 
-  // --- Wheel ---
+  // --- Wheel: vertical = products (hero only), horizontal = screens ---
   useEffect(() => {
     const handler = (e: WheelEvent) => {
       e.preventDefault();
-      if (isTransitioning.current || Math.abs(e.deltaY) < 25) return;
-      goTo(e.deltaY > 0 ? activeIndex + 1 : activeIndex - 1, e.deltaY > 0 ? 1 : -1);
+      if (isTransitioning.current) return;
+
+      // Horizontal scroll (trackpad/shift+wheel) → screen switch
+      if (Math.abs(e.deltaX) > 30 && Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+        goScreen(e.deltaX > 0 ? 1 : -1);
+        return;
+      }
+      // Vertical scroll → product switch (only on hero)
+      if (screenIndex === 0 && Math.abs(e.deltaY) > 25) {
+        // Let HeroScreen handle it
+        const evt = new CustomEvent("hero-scroll", { detail: { dir: e.deltaY > 0 ? 1 : -1 } });
+        window.dispatchEvent(evt);
+      }
     };
     window.addEventListener("wheel", handler, { passive: false });
     return () => window.removeEventListener("wheel", handler);
-  }, [activeIndex, goTo]);
+  }, [screenIndex, goScreen]);
 
-  // --- Touch swipe ---
+  // --- Touch: vertical = products (hero), horizontal = screens ---
   useEffect(() => {
     let x0 = 0, y0 = 0;
     const ts = (e: TouchEvent) => { x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; };
@@ -131,59 +127,51 @@ export default function Home() {
       if (isTransitioning.current) return;
       const dx = x0 - e.changedTouches[0].clientX;
       const dy = y0 - e.changedTouches[0].clientY;
-      if (Math.abs(dy) > 35 && Math.abs(dy) > Math.abs(dx)) {
-        goTo(dy > 0 ? activeIndex + 1 : activeIndex - 1, dy > 0 ? 1 : -1);
-      } else if (Math.abs(dx) > 50) {
-        goTo(dx > 0 ? activeIndex + 1 : activeIndex - 1, dx > 0 ? 1 : -1);
+
+      // Horizontal swipe → screen switch
+      if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.2) {
+        goScreen(dx > 0 ? 1 : -1);
+        return;
+      }
+      // Vertical swipe → product switch (hero only)
+      if (screenIndex === 0 && Math.abs(dy) > 35 && Math.abs(dy) > Math.abs(dx)) {
+        const evt = new CustomEvent("hero-scroll", { detail: { dir: dy > 0 ? 1 : -1 } });
+        window.dispatchEvent(evt);
       }
     };
     window.addEventListener("touchstart", ts, { passive: true });
     window.addEventListener("touchend", te, { passive: true });
     return () => { window.removeEventListener("touchstart", ts); window.removeEventListener("touchend", te); };
-  }, [activeIndex, goTo]);
-
-  // --- Initial load animation ---
-  useGSAP(() => {
-    if (hasAnimated.current) return;
-    hasAnimated.current = true;
-    const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
-    tl.from(packRefs.current[0]!, { opacity: 0, scale: 0.85, y: 50, duration: 1 }, 0.3)
-      .from(".bg-text-el", { opacity: 0, scale: 0.95, duration: 1 }, 0.2)
-      .from(".left-block > *", { opacity: 0, y: 20, duration: 0.5, stagger: 0.08 }, 0.5)
-      .from(".mobile-info-inner > *", { opacity: 0, y: 15, duration: 0.45, stagger: 0.06 }, 0.5)
-      .from(".right-block", { opacity: 0, x: 20, duration: 0.5 }, 0.6)
-      .from(".bottom-price", { opacity: 0, y: 15, duration: 0.4 }, 0.7)
-      .from(".nav-el", { opacity: 0, y: -10, duration: 0.5 }, 0.3);
-  }, { scope: containerRef });
-
-  // --- Text switch animation (runs on activeIndex change) ---
-  useGSAP(() => {
-    if (!hasAnimated.current) return;
-    gsap.fromTo(".bg-text-el span", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.5, ease: "power2.out" });
-    gsap.fromTo(".left-block > *", { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.4, stagger: 0.03, ease: "power2.out" });
-    gsap.fromTo(".mobile-info-inner > *", { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.35, stagger: 0.025, ease: "power2.out" });
-    gsap.fromTo(".bottom-price", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.35, ease: "power2.out", delay: 0.05 });
-  }, { scope: containerRef, dependencies: [activeIndex], revertOnUpdate: true });
-
-  // --- Thumbnails ---
-  const thumbStart = thumbPage * THUMBS_PER_PAGE;
-  const visibleThumbs = products.slice(thumbStart, thumbStart + THUMBS_PER_PAGE);
-
-  const handleShopNow = useCallback(() => { addItem(product); openCart(); }, [product, addItem, openCart]);
-  const cartCount = totalItems();
+  }, [screenIndex, goScreen]);
 
   return (
-    <div ref={containerRef} className="fixed inset-0 overflow-hidden">
+    <div className="fixed inset-0 overflow-hidden">
 
-      {/* NAV */}
+      {/* NAV — always visible across all screens */}
       <nav className="nav-el fixed top-0 left-0 right-0 z-[100] flex items-center justify-between px-5 md:px-12 py-3 md:py-4">
-        <div style={{ fontFamily: "var(--font-playfair)", fontStyle: "italic", fontSize: 22, fontWeight: 400 }}>SliceUp</div>
-        <div className="hidden md:flex items-center gap-6">
-          <span className="text-sm cursor-pointer" style={{ background: "rgba(255,255,255,0.95)", color: "#222", borderRadius: 20, padding: "6px 20px", fontWeight: 500 }}>Menu</span>
-          <a href="#" className="text-sm opacity-80 hover:opacity-100 transition-opacity">About</a>
-          <a href="#" className="text-sm opacity-80 hover:opacity-100 transition-opacity">Shop</a>
-          <a href="#" className="text-sm opacity-80 hover:opacity-100 transition-opacity">Contact</a>
+        <div style={{ fontFamily: "var(--font-playfair)", fontStyle: "italic", fontSize: 22, fontWeight: 400, cursor: "pointer" }}
+          onClick={() => { if (screenIndex !== 0) goScreen(-screenIndex as 1 | -1); }}>
+          SliceUp
         </div>
+
+        <div className="hidden md:flex items-center gap-6">
+          {SCREENS.map((s, i) => (
+            <button key={s} onClick={() => {
+              if (i !== screenIndex) {
+                const dir = i > screenIndex ? 1 : -1;
+                // Must go step by step for smooth animation
+                goScreen(dir);
+              }
+            }}
+              className="text-sm transition-all duration-300"
+              style={{
+                ...(i === screenIndex ? { background: "rgba(255,255,255,0.95)", color: "#222", borderRadius: 20, padding: "6px 20px", fontWeight: 500 } : { opacity: 0.7, padding: "6px 0" }),
+              }}>
+              {s === "hero" ? "Products" : s === "collab" ? "Collaboration" : "Contact"}
+            </button>
+          ))}
+        </div>
+
         <div className="flex items-center gap-3">
           <button className="md:hidden p-1" aria-label="Menu"><MenuIcon size={20} strokeWidth={1.5} /></button>
           <button onClick={toggleCart} className="relative p-1 hover:opacity-80 transition-opacity" aria-label="Cart">
@@ -193,116 +181,33 @@ export default function Home() {
         </div>
       </nav>
 
-      {/* BG TEXT */}
-      <div className="bg-text-el absolute inset-0 flex items-center justify-center pointer-events-none select-none overflow-hidden" style={{ zIndex: 1 }}>
-        <span style={{
-          fontFamily: "var(--font-playfair)", fontWeight: 900, fontSize: "clamp(100px, 22vw, 400px)",
-          textTransform: "uppercase", color: "rgba(255,255,255,0.12)", lineHeight: 0.85, whiteSpace: "nowrap", letterSpacing: 10,
-        }}>{product.name}</span>
-      </div>
-
-      {/* ALL PACKS — preloaded, GSAP controls visibility */}
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 2 }}>
-        {products.map((p, i) => (
-          <div
-            key={p.id}
-            ref={(el) => { packRefs.current[i] = el; }}
-            className="absolute will-change-transform md:translate-x-[5%] -translate-y-[5%] md:translate-y-0"
-            style={{
-              maxWidth: 320, maxHeight: 460, width: "52vmin", height: "70vmin",
-              visibility: i === 0 ? "visible" : "hidden",
-            }}
-          >
-            <Image
-              src={p.images.pack}
-              alt={p.name}
-              width={350}
-              height={500}
-              className="w-full h-full object-contain drop-shadow-[0_25px_50px_rgba(0,0,0,0.25)]"
-              priority={i < 3}
-              loading="eager"
-            />
-          </div>
+      {/* Page position dots (right edge, vertical) */}
+      <div className="fixed right-4 md:right-8 top-1/2 -translate-y-1/2 z-[90] flex flex-col gap-2">
+        {SCREENS.map((_, i) => (
+          <div key={i} className="rounded-full transition-all duration-500" style={{
+            width: 6, height: i === screenIndex ? 24 : 6,
+            backgroundColor: i === screenIndex ? "white" : "rgba(255,255,255,0.25)",
+          }} />
         ))}
       </div>
 
-      {/* LEFT BLOCK (desktop) */}
-      <div className="left-block absolute z-10 hidden md:flex flex-col" style={{ left: 48, top: "50%", transform: "translateY(-50%)", maxWidth: 340 }}>
-        <p style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: 3, opacity: 0.6, marginBottom: 8 }}>{product.subtitle}</p>
-        <h1 style={{ fontFamily: "var(--font-playfair)", fontSize: 42, fontWeight: 700, lineHeight: 1.05, marginBottom: 10 }}>{product.name}</h1>
-        <div className="flex items-baseline gap-3" style={{ marginBottom: 12 }}>
-          <span style={{ fontSize: 16, fontWeight: 700 }}>{formatPrice(product.price)}</span>
-          {product.compareAtPrice && <span style={{ fontSize: 14, opacity: 0.5, textDecoration: "line-through" }}>{formatPrice(product.compareAtPrice)}</span>}
+      {/* SCREENS container */}
+      {SCREENS.map((screen, i) => (
+        <div
+          key={screen}
+          ref={(el) => { screenRefs.current[i] = el; }}
+          className="absolute inset-0 will-change-transform"
+          style={{ visibility: i === 0 ? "visible" : "hidden" }}
+        >
+          {screen === "hero" && (
+            <HeroScreen activeIndex={activeProduct} thumbPage={thumbPage} onProductChange={goProduct} />
+          )}
+          {screen === "collab" && <CollabScreen />}
+          {screen === "contact" && <ContactScreen />}
         </div>
-        <p style={{ fontSize: 13, lineHeight: 1.6, opacity: 0.65, marginBottom: 20 }}>{product.description}</p>
-        <button onClick={handleShopNow} className="group relative overflow-hidden" style={{ border: "1.5px solid rgba(255,255,255,0.7)", background: "transparent", borderRadius: 30, padding: "12px 32px", fontSize: 13, fontWeight: 500, cursor: "pointer", color: "white", alignSelf: "flex-start" }}>
-          <span className="relative z-10 transition-colors duration-300 group-hover:text-black">Shop now</span>
-          <span className="absolute inset-0 bg-white scale-x-0 origin-left transition-transform duration-300 group-hover:scale-x-100" />
-        </button>
-      </div>
-
-      {/* MOBILE INFO */}
-      <div className="absolute z-10 md:hidden left-0 right-0 bottom-0 px-5 pb-6 pt-16 text-center" style={{ background: "linear-gradient(to top, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.2) 60%, transparent 100%)" }}>
-        <div className="mobile-info-inner">
-          <p style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: 3, opacity: 0.7, marginBottom: 4 }}>{product.subtitle}</p>
-          <h1 style={{ fontFamily: "var(--font-playfair)", fontSize: 32, fontWeight: 700, lineHeight: 1.1, marginBottom: 4, textShadow: "0 2px 12px rgba(0,0,0,0.3)" }}>{product.name}</h1>
-          <p style={{ fontSize: 12, lineHeight: 1.5, opacity: 0.75, marginBottom: 8, maxWidth: 280, marginLeft: "auto", marginRight: "auto", textShadow: "0 1px 6px rgba(0,0,0,0.2)" }}>{product.description}</p>
-          <div className="flex items-baseline justify-center gap-3 mb-3">
-            <span style={{ fontFamily: "var(--font-playfair)", fontSize: 30, fontWeight: 700, textShadow: "0 2px 10px rgba(0,0,0,0.3)" }}>{formatPrice(product.price)}</span>
-            {product.compareAtPrice && <span style={{ fontSize: 14, opacity: 0.5, textDecoration: "line-through" }}>{formatPrice(product.compareAtPrice)}</span>}
-          </div>
-          <button onClick={handleShopNow} className="group relative overflow-hidden mx-auto" style={{ border: "1.5px solid rgba(255,255,255,0.7)", background: "rgba(255,255,255,0.1)", backdropFilter: "blur(8px)", borderRadius: 30, padding: "11px 36px", fontSize: 13, fontWeight: 500, color: "white" }}>
-            <span className="relative z-10 transition-colors duration-300 group-hover:text-black">Shop now</span>
-            <span className="absolute inset-0 bg-white scale-x-0 origin-left transition-transform duration-300 group-hover:scale-x-100" />
-          </button>
-          <div className="flex items-center justify-center gap-1.5 mt-4">
-            {products.map((_, i) => (
-              <button key={i} onClick={() => goTo(i, i > activeIndex ? 1 : -1)} className="rounded-full transition-all duration-300"
-                style={{ width: i === activeIndex ? 18 : 5, height: 5, backgroundColor: i === activeIndex ? "white" : "rgba(255,255,255,0.35)" }}
-                aria-label={`Product ${i + 1}`} />
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* RIGHT BLOCK (desktop) */}
-      <div className="right-block absolute z-10 hidden md:flex flex-col items-center" style={{ right: 48, top: "50%", transform: "translateY(-50%)" }}>
-        <div className="flex items-center gap-2 mb-4">
-          <ArrowBtn dir="left" onClick={() => goTo(activeIndex - 1, -1)} />
-          <ArrowBtn dir="right" onClick={() => goTo(activeIndex + 1, 1)} />
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          {visibleThumbs.map((p, i) => {
-            const realIdx = thumbStart + i;
-            return <Thumb key={p.id} product={p} isActive={realIdx === activeIndex} onClick={() => goTo(realIdx, realIdx > activeIndex ? 1 : -1)} />;
-          })}
-        </div>
-        <span className="text-[10px] opacity-30 mt-3 tracking-wider">{activeIndex + 1} / {products.length}</span>
-      </div>
-
-      {/* BOTTOM PRICE (desktop) */}
-      <div className="bottom-price absolute z-10 hidden md:block" style={{ bottom: 40, left: "50%", transform: "translateX(-50%)" }}>
-        <span style={{ fontFamily: "var(--font-playfair)", fontSize: 48, fontWeight: 700 }}>{formatPrice(product.price)}</span>
-      </div>
+      ))}
 
       <CartDrawer />
     </div>
-  );
-}
-
-function ArrowBtn({ dir, onClick }: { dir: "left" | "right"; onClick: () => void }) {
-  return (
-    <button onClick={onClick} className="flex items-center justify-center rounded-full hover:bg-white/10 transition-colors" style={{ width: 40, height: 40, border: "1px solid rgba(255,255,255,0.3)" }} aria-label={dir === "left" ? "Previous" : "Next"}>
-      {dir === "left" ? <ChevronLeft size={18} strokeWidth={1.5} /> : <ChevronRight size={18} strokeWidth={1.5} />}
-    </button>
-  );
-}
-
-function Thumb({ product, isActive, onClick }: { product: Product; isActive: boolean; onClick: () => void }) {
-  return (
-    <button onClick={onClick} className="overflow-hidden flex items-center justify-center transition-all duration-300"
-      style={{ width: 56, height: 56, borderRadius: 12, border: isActive ? "2px solid white" : "1.5px solid rgba(255,255,255,0.15)", background: isActive ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)", opacity: isActive ? 1 : 0.6, padding: 4 }} title={product.name}>
-      <Image src={product.images.pack} alt={product.name} width={48} height={48} className="w-full h-full object-contain" />
-    </button>
   );
 }

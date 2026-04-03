@@ -10,12 +10,15 @@ import HeroScreen from "@/components/HeroScreen";
 import CollabScreen from "@/components/CollabScreen";
 import ContactScreen from "@/components/ContactScreen";
 import AboutScreen from "@/components/AboutScreen";
+import CatalogScreen from "@/components/CatalogScreen";
+import ProcessScreen from "@/components/ProcessScreen";
 import CustomCursor from "@/components/CustomCursor";
 import SplashScreen from "@/components/SplashScreen";
 import MobileMenu from "@/components/MobileMenu";
+import ExitIntent from "@/components/ExitIntent";
 
-const SCREENS = ["hero", "collab", "about", "contact"] as const;
-const SCREEN_LABELS = ["Products", "Collaboration", "About", "Contact"];
+const SCREENS = ["hero", "catalog", "process", "collab", "about", "contact"] as const;
+const SCREEN_LABELS = ["Products", "Catalog", "Process", "Collab", "About", "Contact"];
 const THUMBS_PER_PAGE = 4;
 
 export default function Home() {
@@ -179,7 +182,7 @@ export default function Home() {
             </button>
             <button onClick={toggleCart} className="relative p-1 hover:opacity-80 transition-opacity" aria-label="Cart">
               <ShoppingBag size={20} strokeWidth={1.5} />
-              {cartCount > 0 && <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-white text-black text-[10px] font-bold flex items-center justify-center">{cartCount}</span>}
+              {cartCount > 0 && <span data-cart-badge className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-white text-black text-[10px] font-bold flex items-center justify-center">{cartCount}</span>}
             </button>
           </div>
         </nav>
@@ -200,6 +203,8 @@ export default function Home() {
             className="absolute inset-0 will-change-transform"
             style={{ visibility: i === 0 ? "visible" : "hidden" }}>
             {screen === "hero" && <HeroScreen activeIndex={activeProduct} thumbPage={thumbPage} onProductChange={goProduct} />}
+            {screen === "catalog" && <CatalogScreen />}
+            {screen === "process" && <ProcessScreen />}
             {screen === "collab" && <CollabScreen />}
             {screen === "about" && <AboutScreen />}
             {screen === "contact" && <ContactScreen />}
@@ -211,6 +216,9 @@ export default function Home() {
 
       {/* Mobile menu */}
       <MobileMenu isOpen={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} onNavigate={goScreenDirect} currentScreen={screenIndex} />
+
+      {/* Exit intent popup */}
+      <ExitIntent />
     </>
   );
 }

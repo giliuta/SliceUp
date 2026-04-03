@@ -13,9 +13,11 @@ interface MobileMenuProps {
 
 const LINKS = [
   { label: "Products", screen: 0 },
-  { label: "Collaboration", screen: 1 },
-  { label: "Contact", screen: 2 },
-  { label: "About", screen: 3 },
+  { label: "Catalog", screen: 1 },
+  { label: "Process", screen: 2 },
+  { label: "Collaboration", screen: 3 },
+  { label: "About", screen: 4 },
+  { label: "Contact", screen: 5 },
 ];
 
 export default function MobileMenu({ isOpen, onClose, onNavigate, currentScreen }: MobileMenuProps) {

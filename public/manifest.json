@@ -1,0 +1,13 @@
+{
+  "name": "SliceUp — Premium Dried Fruits",
+  "short_name": "SliceUp",
+  "description": "Premium dehydrated fruits and vegetables from Cyprus",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#C2185B",
+  "theme_color": "#C2185B",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "/favicon.ico", "sizes": "64x64", "type": "image/x-icon" }
+  ]
+}

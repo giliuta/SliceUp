@@ -30,6 +30,7 @@ export const metadata: Metadata = {
   keywords: ["dried fruits", "dehydrated", "premium snacks", "Cyprus", "healthy", "SliceUp"],
   authors: [{ name: "SliceUp" }],
   icons: { icon: "/favicon.ico" },
+  manifest: "/manifest.json",
   openGraph: {
     title: "SliceUp — Premium Dried Fruits",
     description: "Premium dehydrated fruits and vegetables from Cyprus. Pure nature, sliced to perfection.",

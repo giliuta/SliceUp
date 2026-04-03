@@ -22,8 +22,19 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-::selection {
-  background: rgba(255,255,255,0.25);
-}
+/* Hide default cursor when custom cursor is active */
+* { cursor: none; }
+@media (pointer: coarse) { * { cursor: auto; } }
 
+::selection { background: rgba(255,255,255,0.25); }
 ::-webkit-scrollbar { width: 0; }
+
+/* Reduced motion: kill all animations and transitions */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

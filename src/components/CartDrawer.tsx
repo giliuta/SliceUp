@@ -119,7 +119,23 @@ export default function CartDrawer() {
                 {formatPrice(totalPrice())}
               </span>
             </div>
-            <button className="w-full py-3 bg-white text-black text-sm font-medium tracking-wider uppercase hover:bg-white/90 transition-colors">
+            <button
+              onClick={async () => {
+                const res = await fetch("/api/checkout", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    items: items.map((i) => ({
+                      id: i.product.id, name: i.product.name,
+                      price: i.product.price, quantity: i.quantity,
+                    })),
+                  }),
+                });
+                const { url } = await res.json();
+                if (url) window.location.href = url;
+              }}
+              className="w-full py-3 bg-white text-black text-sm font-medium tracking-wider uppercase hover:bg-white/90 transition-colors"
+            >
               Checkout
             </button>
           </div>

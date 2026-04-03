@@ -54,6 +54,20 @@ export default function HeroScreen({ activeIndex, thumbPage, onProductChange }: 
     setTimeout(() => { isTransitioning.current = false; }, 650);
   }, [activeIndex, onProductChange]);
 
+  // Mouse parallax on active pack (desktop only)
+  useEffect(() => {
+    if ("ontouchstart" in window) return;
+    const handler = (e: MouseEvent) => {
+      const pack = packRefs.current[activeIndex];
+      if (!pack) return;
+      const cx = (e.clientX / window.innerWidth - 0.5) * 2;
+      const cy = (e.clientY / window.innerHeight - 0.5) * 2;
+      gsap.to(pack, { x: cx * 12, y: cy * 8, duration: 0.6, ease: "power2.out", overwrite: "auto" });
+    };
+    window.addEventListener("mousemove", handler);
+    return () => window.removeEventListener("mousemove", handler);
+  }, [activeIndex]);
+
   // Listen for scroll events from parent (wheel/swipe delegated)
   useEffect(() => {
     const handler = (e: Event) => {
